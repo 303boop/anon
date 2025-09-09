@@ -717,13 +717,25 @@
       }
     });
 
+    // Close modal when clicking outside
+    voiceModal.addEventListener('click', (e) => {
+      if (e.target === voiceModal) {
+        closeVoiceModal();
+      }
+    });
+
     // Prevent zoom on input focus (iOS)
     document.addEventListener('touchstart', {}, true);
 
     // Handle page unload
     window.addEventListener('beforeunload', () => {
-      if (messagesRef && currentRoom) {
-        sendSystemMessage('Someone left');
+      if (presenceRef && currentRoom) {
+        // Clean up presence and typing status
+        presenceRef.remove();
+        if (typingRef) {
+          typingRef.remove();
+        }
+        sendSystemMessage(userNickname + ' left the chat');
       }
     });
 
