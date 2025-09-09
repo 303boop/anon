@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Anonymous Real-Time Messenger</title>
   <style>
-    /* Styles same as before for layout and appearance */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -180,9 +179,9 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-  
+
   <script>
-    // Firebase config (your project)
+    // Firebase config - make sure this matches your project config correctly
     var firebaseConfig = {
       apiKey: "AIzaSyBhpJ1yAo92xLx6L3GyTVTuZsOXYYDZKWs",
       authDomain: "anon-ac806.firebaseapp.com",
@@ -205,6 +204,7 @@
       document.getElementById('roomCode').value = code;
       showNotification('🎲 Room code generated!');
     }
+
     function joinRoom() {
       const roomCode = document.getElementById('roomCode').value.trim();
       if (!roomCode) {
@@ -216,10 +216,14 @@
       messagesRef = database.ref('rooms/' + currentRoom + '/messages');
       document.querySelector('.room-setup').style.display = 'none';
       document.getElementById('chatArea').style.display = 'block';
+
       listenForMessages();
+
       sendSystemMessage(userId.substr(5, 4) + ' joined the chat');
+
       showNotification('🚪 Joined room: ' + roomCode);
     }
+
     function listenForMessages() {
       if (!messagesRef) {
         console.error('Messages ref not set');
@@ -230,8 +234,11 @@
       messagesRef.on('child_added', function (snapshot) {
         const messageData = snapshot.val();
         displayMessage(messageData, messageData.sender === userId);
+      }, function (error) {
+        console.error('Firebase listen error:', error);
       });
     }
+
     function sendMessage() {
       const messageInput = document.getElementById('messageInput');
       const message = messageInput.value.trim();
@@ -245,13 +252,18 @@
         type: 'text',
       };
       try {
-        messagesRef.push(messageData);
-        messageInput.value = '';
+        messagesRef.push(messageData).then(() => {
+          messageInput.value = '';
+        }).catch(error => {
+          console.error('Error sending message:', error);
+          showNotification('Error sending message', 'error');
+        });
       } catch (error) {
         console.error('Error sending message:', error);
         showNotification('Error sending message', 'error');
       }
     }
+
     function sendSystemMessage(text) {
       if (!messagesRef) return;
       const messageData = {
@@ -264,13 +276,16 @@
       };
       messagesRef.push(messageData);
     }
+
     document.getElementById('fileInput').addEventListener('change', function (event) {
       const file = event.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+
+      if (file.size > 5 * 1024 * 1024) { // Increased limit to 5MB
         showNotification('❌ File too large (max 5MB)', 'error');
         return;
       }
+
       const reader = new FileReader();
       reader.onload = function (e) {
         const messageData = {
@@ -284,8 +299,12 @@
           type: 'file',
         };
         try {
-          messagesRef.push(messageData);
-          showNotification('📁 File sent!');
+          messagesRef.push(messageData).then(() => {
+            showNotification('📁 File sent!');
+          }).catch(error => {
+            console.error('Error sending file:', error);
+            showNotification('Error sending file', 'error');
+          });
         } catch (error) {
           console.error('Error sending file:', error);
           showNotification('Error sending file', 'error');
@@ -294,6 +313,7 @@
       reader.readAsDataURL(file);
       event.target.value = '';
     });
+
     function displayMessage(messageData, isOwn) {
       const messagesContainer = document.getElementById('messages');
       const messageDiv = document.createElement('div');
@@ -333,15 +353,18 @@
       messagesContainer.appendChild(messageDiv);
       scrollToBottom();
     }
+
     function scrollToBottom() {
       const messages = document.getElementById('messages');
       messages.scrollTop = messages.scrollHeight;
     }
+
     function copyRoomCode() {
       navigator.clipboard.writeText(currentRoom).then(function () {
         showNotification('📋 Room code copied!');
       });
     }
+
     function leaveRoom() {
       if (messagesRef) {
         sendSystemMessage(userId.substr(5, 4) + ' left the chat');
@@ -355,6 +378,7 @@
       document.getElementById('messages').innerHTML = '<div class="status">🔄 Loading messages...</div>';
       showNotification('👋 Left the room');
     }
+
     function showNotification(message, type = 'success') {
       const notification = document.getElementById('notification');
       notification.textContent = message;
@@ -364,6 +388,7 @@
         notification.style.display = 'none';
       }, 4000);
     }
+
     document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('roomCode').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') joinRoom();
@@ -372,6 +397,7 @@
         if (e.key === 'Enter') sendMessage();
       });
     });
+
     window.addEventListener('beforeunload', function () {
       if (messagesRef && currentRoom) {
         sendSystemMessage(userId.substr(5, 4) + ' left the chat');
