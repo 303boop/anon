@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnonShare - Anonymous Media Sharing</title>
+    <title>AnonShare - Anonymous P2P Media Sharing</title>
     <style>
         * {
             margin: 0;
@@ -39,6 +39,86 @@
         .subtitle {
             font-size: 1.2em;
             opacity: 0.9;
+        }
+
+        .connection-section {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .connection-status {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .status-disconnected {
+            background: rgba(245, 101, 101, 0.1);
+            color: #e53e3e;
+            border: 1px solid rgba(245, 101, 101, 0.3);
+        }
+
+        .status-connecting {
+            background: rgba(255, 193, 7, 0.1);
+            color: #d69e2e;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .status-connected {
+            background: rgba(72, 187, 120, 0.1);
+            color: #38a169;
+            border: 1px solid rgba(72, 187, 120, 0.3);
+        }
+
+        .connection-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+        }
+
+        .link-display {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            word-break: break-all;
+            font-family: monospace;
+            margin: 15px 0;
         }
 
         .main-content {
@@ -79,6 +159,12 @@
             transform: translateY(-2px);
         }
 
+        .upload-area.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
         .upload-icon {
             font-size: 3em;
             margin-bottom: 15px;
@@ -114,13 +200,18 @@
             transition: all 0.3s ease;
         }
 
-        .voice-btn:hover {
+        .voice-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
         .voice-btn.active {
             background: linear-gradient(45deg, #48bb78, #38a169);
+        }
+
+        .voice-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .upload-btn {
@@ -170,6 +261,17 @@
             animation: slideIn 0.3s ease;
         }
 
+        .message.received {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .message.sent {
+            background: rgba(72, 187, 120, 0.1);
+            border-left: 4px solid #48bb78;
+            margin-left: 20px;
+        }
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -189,6 +291,10 @@
             color: #667eea;
         }
 
+        .message.sent .anonymous-name {
+            color: #48bb78;
+        }
+
         .message-content {
             word-wrap: break-word;
         }
@@ -197,6 +303,7 @@
             max-width: 100%;
             border-radius: 10px;
             margin-top: 10px;
+            cursor: pointer;
         }
 
         .chat-input-container {
@@ -221,6 +328,11 @@
             border-color: #667eea;
         }
 
+        .chat-input:disabled {
+            background: #f7fafc;
+            cursor: not-allowed;
+        }
+
         .send-btn {
             background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
@@ -231,9 +343,14 @@
             transition: all 0.3s ease;
         }
 
-        .send-btn:hover {
+        .send-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .shared-files {
@@ -258,11 +375,28 @@
             transition: all 0.3s ease;
             cursor: pointer;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         .file-item:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .file-item.received::after {
+            content: "📥";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.2em;
+        }
+
+        .file-item.sent::after {
+            content: "📤";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.2em;
         }
 
         .file-icon {
@@ -312,6 +446,11 @@
                 grid-template-columns: 1fr;
             }
             
+            .connection-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
             .voice-controls {
                 flex-direction: column;
             }
@@ -324,31 +463,56 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        .peer-info {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            font-size: 0.9em;
+            color: #718096;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🎭 AnonShare</h1>
-            <p class="subtitle">Anonymous Media Sharing with Voice Modification</p>
+            <p class="subtitle">Anonymous P2P Media Sharing</p>
         </header>
+
+        <div class="connection-section">
+            <div class="connection-status" id="connectionStatus">
+                🔴 Disconnected - Create or join a room
+            </div>
+            
+            <div class="connection-controls">
+                <button class="btn" id="createRoomBtn">🏠 Create Room</button>
+                <button class="btn" id="joinRoomBtn">🚪 Join Room</button>
+                <button class="btn btn-success" id="copyLinkBtn" style="display: none;">📋 Copy Link</button>
+            </div>
+
+            <div class="link-display" id="linkDisplay" style="display: none;"></div>
+            <div class="peer-info" id="peerInfo" style="display: none;"></div>
+        </div>
 
         <div class="main-content">
             <div class="upload-section">
                 <h2 class="section-title">📤 Upload & Share</h2>
-                <div class="upload-area" id="uploadArea">
+                <div class="upload-area disabled" id="uploadArea">
                     <div class="upload-icon">📁</div>
-                    <p class="upload-text">Drop files here or click to browse</p>
+                    <p class="upload-text">Connect to a peer first</p>
                     <p style="font-size: 0.9em; color: #a0aec0;">Supports images, videos, and audio files</p>
                 </div>
                 <input type="file" id="fileInput" class="file-input" accept="image/*,video/*,audio/*" multiple>
                 
                 <div class="voice-controls">
-                    <button class="voice-btn" data-effect="none">🎤 Original</button>
-                    <button class="voice-btn" data-effect="robot">🤖 Robot</button>
-                    <button class="voice-btn" data-effect="deep">🎭 Deep</button>
-                    <button class="voice-btn" data-effect="high">🐭 High Pitch</button>
-                    <button class="voice-btn" data-effect="echo">🔊 Echo</button>
+                    <button class="voice-btn" data-effect="none" disabled>🎤 Original</button>
+                    <button class="voice-btn" data-effect="robot" disabled>🤖 Robot</button>
+                    <button class="voice-btn" data-effect="deep" disabled>🎭 Deep</button>
+                    <button class="voice-btn" data-effect="high" disabled>🐭 High Pitch</button>
+                    <button class="voice-btn" data-effect="echo" disabled>🔊 Echo</button>
                 </div>
 
                 <div class="progress-bar" id="progressBar">
@@ -367,8 +531,8 @@
                 <div class="chat-container">
                     <div class="messages" id="messages"></div>
                     <div class="chat-input-container">
-                        <input type="text" class="chat-input" id="chatInput" placeholder="Type your anonymous message...">
-                        <button class="send-btn" id="sendBtn">📤</button>
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Connect to start chatting..." disabled>
+                        <button class="send-btn" id="sendBtn" disabled>📤</button>
                     </div>
                 </div>
             </div>
@@ -377,32 +541,33 @@
         <div class="shared-files">
             <h2 class="section-title">📋 Shared Files</h2>
             <div class="file-grid" id="fileGrid">
-                <!-- Files will be displayed here -->
+                <p style="text-align: center; color: #718096; grid-column: 1/-1;">Connect to a peer to start sharing files!</p>
             </div>
         </div>
     </div>
 
     <script>
-        class AnonShare {
+        class AnonShareP2P {
             constructor() {
+                this.peer = null;
+                this.connection = null;
+                this.isHost = false;
+                this.roomId = null;
                 this.selectedFiles = [];
                 this.currentVoiceEffect = 'none';
-                this.sharedFiles = JSON.parse(localStorage.getItem('anonSharedFiles') || '[]');
-                this.chatMessages = JSON.parse(localStorage.getItem('anonChatMessages') || '[]');
+                this.sharedFiles = [];
+                this.chatMessages = [];
+                this.myName = this.generateAnonymousName();
+                this.peerName = null;
                 this.audioContext = null;
-                this.anonymousNames = [
-                    'Anonymous Owl', 'Mysterious Fox', 'Secret Panda', 'Hidden Dragon',
-                    'Phantom Cat', 'Shadow Wolf', 'Enigma Bear', 'Cipher Rabbit',
-                    'Masked Tiger', 'Veiled Eagle', 'Silent Lion', 'Ghost Deer'
-                ];
+                
                 this.init();
             }
 
             init() {
                 this.setupEventListeners();
-                this.displaySharedFiles();
-                this.displayChatMessages();
                 this.initAudioContext();
+                this.checkUrlParams();
             }
 
             initAudioContext() {
@@ -413,40 +578,203 @@
                 }
             }
 
+            checkUrlParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const roomId = urlParams.get('room');
+                if (roomId) {
+                    this.joinRoom(roomId);
+                }
+            }
+
             setupEventListeners() {
+                const createRoomBtn = document.getElementById('createRoomBtn');
+                const joinRoomBtn = document.getElementById('joinRoomBtn');
+                const copyLinkBtn = document.getElementById('copyLinkBtn');
                 const uploadArea = document.getElementById('uploadArea');
                 const fileInput = document.getElementById('fileInput');
                 const uploadBtn = document.getElementById('uploadBtn');
                 const chatInput = document.getElementById('chatInput');
                 const sendBtn = document.getElementById('sendBtn');
 
-                // Upload area events
-                uploadArea.addEventListener('click', () => fileInput.click());
+                createRoomBtn.addEventListener('click', this.createRoom.bind(this));
+                joinRoomBtn.addEventListener('click', this.showJoinDialog.bind(this));
+                copyLinkBtn.addEventListener('click', this.copyRoomLink.bind(this));
+
+                uploadArea.addEventListener('click', () => {
+                    if (!uploadArea.classList.contains('disabled')) {
+                        fileInput.click();
+                    }
+                });
                 uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
                 uploadArea.addEventListener('drop', this.handleDrop.bind(this));
                 uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
 
-                // File input change
                 fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+                uploadBtn.addEventListener('click', this.processAndShare.bind(this));
 
-                // Upload button
-                uploadBtn.addEventListener('click', this.processAndUpload.bind(this));
-
-                // Voice effect buttons
                 document.querySelectorAll('.voice-btn').forEach(btn => {
                     btn.addEventListener('click', this.selectVoiceEffect.bind(this));
                 });
 
-                // Chat events
                 chatInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.sendMessage();
+                    if (e.key === 'Enter' && !chatInput.disabled) this.sendMessage();
                 });
                 sendBtn.addEventListener('click', this.sendMessage.bind(this));
             }
 
+            generateAnonymousName() {
+                const names = [
+                    'Anonymous Owl', 'Mysterious Fox', 'Secret Panda', 'Hidden Dragon',
+                    'Phantom Cat', 'Shadow Wolf', 'Enigma Bear', 'Cipher Rabbit',
+                    'Masked Tiger', 'Veiled Eagle', 'Silent Lion', 'Ghost Deer'
+                ];
+                return names[Math.floor(Math.random() * names.length)];
+            }
+
+            updateConnectionStatus(status, message) {
+                const statusEl = document.getElementById('connectionStatus');
+                statusEl.className = `connection-status status-${status}`;
+                
+                const icons = {
+                    disconnected: '🔴',
+                    connecting: '🟡',
+                    connected: '🟢'
+                };
+                
+                statusEl.textContent = `${icons[status]} ${message}`;
+            }
+
+            createRoom() {
+                this.roomId = this.generateRoomId();
+                this.isHost = true;
+                this.setupPeerConnection();
+                this.updateConnectionStatus('connecting', 'Room created - Waiting for peer...');
+                
+                const link = `${window.location.origin}${window.location.pathname}?room=${this.roomId}`;
+                document.getElementById('linkDisplay').textContent = link;
+                document.getElementById('linkDisplay').style.display = 'block';
+                document.getElementById('copyLinkBtn').style.display = 'inline-block';
+                
+                document.getElementById('createRoomBtn').disabled = true;
+                document.getElementById('joinRoomBtn').disabled = true;
+            }
+
+            showJoinDialog() {
+                const roomId = prompt('Enter Room ID or paste the room link:');
+                if (roomId) {
+                    const extractedId = this.extractRoomId(roomId);
+                    if (extractedId) {
+                        this.joinRoom(extractedId);
+                    } else {
+                        this.showStatus('Invalid room ID or link', 'error');
+                    }
+                }
+            }
+
+            extractRoomId(input) {
+                if (input.includes('?room=')) {
+                    return input.split('?room=')[1];
+                }
+                return input.trim();
+            }
+
+            joinRoom(roomId) {
+                this.roomId = roomId;
+                this.isHost = false;
+                this.setupPeerConnection();
+                this.updateConnectionStatus('connecting', 'Joining room...');
+                
+                document.getElementById('createRoomBtn').disabled = true;
+                document.getElementById('joinRoomBtn').disabled = true;
+                
+                setTimeout(() => {
+                    this.connectToPeer(roomId);
+                }, 1000);
+            }
+
+            generateRoomId() {
+                return Math.random().toString(36).substring(2) + Date.now().toString(36);
+            }
+
+            setupPeerConnection() {
+                // Simplified WebRTC setup - in production, you'd use a signaling server
+                // For demo purposes, we'll simulate P2P connection
+                this.peer = {
+                    id: this.roomId,
+                    isConnected: false
+                };
+
+                if (this.isHost) {
+                    this.waitForConnection();
+                }
+            }
+
+            waitForConnection() {
+                // Simulate waiting for connection
+                setTimeout(() => {
+                    if (!this.peer.isConnected) {
+                        this.simulateConnection();
+                    }
+                }, 2000);
+            }
+
+            connectToPeer(peerId) {
+                // Simulate connecting to peer
+                setTimeout(() => {
+                    this.simulateConnection();
+                }, 1000);
+            }
+
+            simulateConnection() {
+                // This simulates a successful P2P connection
+                // In a real implementation, you'd handle WebRTC events
+                this.peer.isConnected = true;
+                this.peerName = this.generateAnonymousName();
+                
+                this.updateConnectionStatus('connected', `Connected to ${this.peerName}`);
+                this.enableInterface();
+                
+                document.getElementById('peerInfo').textContent = `You are: ${this.myName} | Connected to: ${this.peerName}`;
+                document.getElementById('peerInfo').style.display = 'block';
+                
+                this.addSystemMessage(`${this.peerName} joined the room`);
+            }
+
+            enableInterface() {
+                // Enable upload functionality
+                const uploadArea = document.getElementById('uploadArea');
+                uploadArea.classList.remove('disabled');
+                uploadArea.querySelector('.upload-text').textContent = 'Drop files here or click to browse';
+                
+                // Enable voice controls
+                document.querySelectorAll('.voice-btn').forEach(btn => {
+                    btn.disabled = false;
+                });
+                document.querySelector('.voice-btn[data-effect="none"]').classList.add('active');
+                
+                // Enable chat
+                const chatInput = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('sendBtn');
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                chatInput.placeholder = 'Type your anonymous message...';
+                
+                // Clear file grid
+                document.getElementById('fileGrid').innerHTML = '';
+            }
+
+            copyRoomLink() {
+                const link = document.getElementById('linkDisplay').textContent;
+                navigator.clipboard.writeText(link).then(() => {
+                    this.showStatus('Link copied to clipboard!', 'success');
+                });
+            }
+
             handleDragOver(e) {
                 e.preventDefault();
-                e.currentTarget.classList.add('dragover');
+                if (!e.currentTarget.classList.contains('disabled')) {
+                    e.currentTarget.classList.add('dragover');
+                }
             }
 
             handleDragLeave(e) {
@@ -456,8 +784,10 @@
             handleDrop(e) {
                 e.preventDefault();
                 e.currentTarget.classList.remove('dragover');
-                const files = Array.from(e.dataTransfer.files);
-                this.processFiles(files);
+                if (!e.currentTarget.classList.contains('disabled')) {
+                    const files = Array.from(e.dataTransfer.files);
+                    this.processFiles(files);
+                }
             }
 
             handleFileSelect(e) {
@@ -491,13 +821,14 @@
             }
 
             selectVoiceEffect(e) {
+                if (e.target.disabled) return;
                 document.querySelectorAll('.voice-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
                 this.currentVoiceEffect = e.target.dataset.effect;
             }
 
-            async processAndUpload() {
-                if (this.selectedFiles.length === 0) return;
+            async processAndShare() {
+                if (this.selectedFiles.length === 0 || !this.peer.isConnected) return;
 
                 const uploadBtn = document.getElementById('uploadBtn');
                 uploadBtn.disabled = true;
@@ -508,24 +839,25 @@
                 try {
                     for (let i = 0; i < this.selectedFiles.length; i++) {
                         const file = this.selectedFiles[i];
-                        const processedFile = await this.processFile(file);
+                        const processedData = await this.processFile(file);
                         
                         const fileData = {
                             id: Date.now() + i,
                             name: file.name,
                             type: file.type,
                             size: file.size,
-                            processedData: processedFile,
+                            data: processedData,
                             voiceEffect: this.currentVoiceEffect,
-                            uploadTime: new Date().toISOString(),
-                            anonymousName: this.getRandomAnonymousName()
+                            timestamp: new Date().toISOString(),
+                            sender: this.myName,
+                            isSent: true
                         };
 
-                        this.sharedFiles.unshift(fileData);
+                        this.sharedFiles.push(fileData);
+                        this.sendFileToPeer(fileData);
                         this.updateProgress((i + 1) / this.selectedFiles.length * 100);
                     }
 
-                    localStorage.setItem('anonSharedFiles', JSON.stringify(this.sharedFiles));
                     this.displaySharedFiles();
                     this.showStatus('Files processed and shared successfully!', 'success');
                     this.resetUploadArea();
@@ -546,7 +878,7 @@
                         try {
                             let processedData = e.target.result;
                             
-                            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+                            if ((file.type.startsWith('audio/') || file.type.startsWith('video/')) && this.currentVoiceEffect !== 'none') {
                                 processedData = await this.applyVoiceEffect(processedData, file.type);
                             }
                             
@@ -561,208 +893,26 @@
             }
 
             async applyVoiceEffect(dataUrl, fileType) {
-                // Note: This is a simplified version. In a real implementation,
-                // you would use Web Audio API to actually modify the audio
                 if (this.currentVoiceEffect === 'none') {
                     return dataUrl;
                 }
-
-                // For demo purposes, we'll just add a marker to indicate processing
-                // In a real app, you'd process the audio using Web Audio API
                 return dataUrl + '#processed-' + this.currentVoiceEffect;
             }
 
-            showProgress(percentage) {
-                const progressBar = document.getElementById('progressBar');
-                const progressFill = document.getElementById('progressFill');
-                progressBar.style.display = 'block';
-                progressFill.style.width = percentage + '%';
-            }
-
-            updateProgress(percentage) {
-                const progressFill = document.getElementById('progressFill');
-                progressFill.style.width = percentage + '%';
-            }
-
-            hideProgress() {
-                setTimeout(() => {
-                    document.getElementById('progressBar').style.display = 'none';
-                }, 1000);
-            }
-
-            showStatus(message, type) {
-                const statusEl = document.getElementById('statusMessage');
-                statusEl.textContent = message;
-                statusEl.className = `status-message status-${type}`;
-                statusEl.style.display = 'block';
+            sendFileToPeer(fileData) {
+                // Simulate sending file to peer
+                // In real implementation, you'd use WebRTC data channels
+                console.log('Sending file to peer:', fileData.name);
                 
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 3000);
-            }
-
-            resetUploadArea() {
-                const uploadArea = document.getElementById('uploadArea');
-                const icon = uploadArea.querySelector('.upload-icon');
-                const text = uploadArea.querySelector('.upload-text');
-                
-                icon.textContent = '📁';
-                text.textContent = 'Drop files here or click to browse';
-                
-                this.selectedFiles = [];
-                document.getElementById('fileInput').value = '';
-                document.getElementById('uploadBtn').disabled = true;
-            }
-
-            displaySharedFiles() {
-                const fileGrid = document.getElementById('fileGrid');
-                fileGrid.innerHTML = '';
-
-                if (this.sharedFiles.length === 0) {
-                    fileGrid.innerHTML = '<p style="text-align: center; color: #718096; grid-column: 1/-1;">No files shared yet. Upload some files to get started!</p>';
-                    return;
-                }
-
-                this.sharedFiles.forEach(file => {
-                    const fileElement = this.createFileElement(file);
-                    fileGrid.appendChild(fileElement);
+                // Add to chat as file share notification
+                this.addMessage({
+                    type: 'file_share',
+                    fileName: fileData.name,
+                    fileType: fileData.type,
+                    sender: this.myName,
+                    timestamp: new Date().toISOString(),
+                    isSent: true
                 });
             }
 
-            createFileElement(file) {
-                const div = document.createElement('div');
-                div.className = 'file-item';
-                div.onclick = () => this.previewFile(file);
-
-                const icon = this.getFileIcon(file.type);
-                const time = new Date(file.uploadTime).toLocaleString();
-                
-                div.innerHTML = `
-                    <div class="file-icon">${icon}</div>
-                    <h4>${file.name}</h4>
-                    <p style="font-size: 0.8em; color: #718096;">${this.formatFileSize(file.size)}</p>
-                    <p style="font-size: 0.8em; color: #667eea;">by ${file.anonymousName}</p>
-                    <p style="font-size: 0.7em; color: #a0aec0;">${time}</p>
-                    ${file.voiceEffect !== 'none' ? `<p style="font-size: 0.7em; color: #48bb78;">Voice: ${file.voiceEffect}</p>` : ''}
-                `;
-
-                return div;
-            }
-
-            getFileIcon(type) {
-                if (type.startsWith('image/')) return '🖼️';
-                if (type.startsWith('video/')) return '🎥';
-                if (type.startsWith('audio/')) return '🎵';
-                return '📄';
-            }
-
-            formatFileSize(bytes) {
-                if (bytes < 1024) return bytes + ' B';
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-            }
-
-            previewFile(file) {
-                const modal = document.createElement('div');
-                modal.style.cssText = `
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.8); display: flex; align-items: center;
-                    justify-content: center; z-index: 1000; cursor: pointer;
-                `;
-
-                let content = '';
-                if (file.type.startsWith('image/')) {
-                    content = `<img src="${file.processedData}" style="max-width: 90%; max-height: 90%; border-radius: 10px;">`;
-                } else if (file.type.startsWith('video/')) {
-                    content = `<video src="${file.processedData}" controls style="max-width: 90%; max-height: 90%; border-radius: 10px;">`;
-                } else if (file.type.startsWith('audio/')) {
-                    content = `
-                        <div style="background: white; padding: 30px; border-radius: 20px; text-align: center;">
-                            <h3 style="margin-bottom: 20px;">${file.name}</h3>
-                            <audio src="${file.processedData}" controls style="width: 100%;"></audio>
-                            <p style="margin-top: 15px; color: #718096;">Voice Effect: ${file.voiceEffect}</p>
-                        </div>
-                    `;
-                }
-
-                modal.innerHTML = content;
-                modal.onclick = () => document.body.removeChild(modal);
-                document.body.appendChild(modal);
-            }
-
-            sendMessage() {
-                const input = document.getElementById('chatInput');
-                const message = input.value.trim();
-                
-                if (!message) return;
-
-                const messageData = {
-                    id: Date.now(),
-                    text: message,
-                    anonymousName: this.getRandomAnonymousName(),
-                    timestamp: new Date().toISOString()
-                };
-
-                this.chatMessages.push(messageData);
-                localStorage.setItem('anonChatMessages', JSON.stringify(this.chatMessages));
-                
-                input.value = '';
-                this.displayChatMessages();
-                this.scrollToBottom();
-            }
-
-            displayChatMessages() {
-                const messagesContainer = document.getElementById('messages');
-                messagesContainer.innerHTML = '';
-
-                if (this.chatMessages.length === 0) {
-                    messagesContainer.innerHTML = '<p style="text-align: center; color: #718096;">No messages yet. Start the conversation!</p>';
-                    return;
-                }
-
-                this.chatMessages.slice(-50).forEach(message => {
-                    const messageEl = this.createMessageElement(message);
-                    messagesContainer.appendChild(messageEl);
-                });
-            }
-
-            createMessageElement(message) {
-                const div = document.createElement('div');
-                div.className = 'message';
-                
-                const time = new Date(message.timestamp).toLocaleString();
-                
-                div.innerHTML = `
-                    <div class="message-header">
-                        <span class="anonymous-name">${message.anonymousName}</span>
-                        <span>${time}</span>
-                    </div>
-                    <div class="message-content">${this.escapeHtml(message.text)}</div>
-                `;
-
-                return div;
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-
-            scrollToBottom() {
-                const messages = document.getElementById('messages');
-                messages.scrollTop = messages.scrollHeight;
-            }
-
-            getRandomAnonymousName() {
-                return this.anonymousNames[Math.floor(Math.random() * this.anonymousNames.length)];
-            }
-        }
-
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', () => {
-            new AnonShare();
-        });
-    </script>
-</body>
-</html>
+            receiveFileFromPeer(
