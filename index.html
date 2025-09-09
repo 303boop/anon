@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnonShare - Anonymous Media Sharing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .upload-section, .chat-section {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #4a5568;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #a0aec0;
+        }
+
+        .upload-text {
+            font-size: 1.1em;
+            color: #718096;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .voice-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .voice-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .voice-btn.active {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .upload-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .chat-container {
+            height: 400px;
+            border: 1px solid #e2e8f0;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f7fafc;
+        }
+
+        .message {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #718096;
+        }
+
+        .anonymous-name {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .message-content {
+            word-wrap: break-word;
+        }
+
+        .media-preview {
+            max-width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .shared-files {
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .file-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .file-item {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .file-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .file-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #48bb78, #38a169);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .status-success {
+            background: rgba(72, 187, 120, 0.1);
+            color: #38a169;
+            border: 1px solid rgba(72, 187, 120, 0.3);
+        }
+
+        .status-error {
+            background: rgba(245, 101, 101, 0.1);
+            color: #e53e3e;
+            border: 1px solid rgba(245, 101, 101, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .voice-controls {
+                flex-direction: column;
+            }
+            
+            .chat-input-container {
+                flex-direction: column;
+            }
+            
+            .file-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎭 AnonShare</h1>
+            <p class="subtitle">Anonymous Media Sharing with Voice Modification</p>
+        </header>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">📤 Upload & Share</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Drop files here or click to browse</p>
+                    <p style="font-size: 0.9em; color: #a0aec0;">Supports images, videos, and audio files</p>
+                </div>
+                <input type="file" id="fileInput" class="file-input" accept="image/*,video/*,audio/*" multiple>
+                
+                <div class="voice-controls">
+                    <button class="voice-btn" data-effect="none">🎤 Original</button>
+                    <button class="voice-btn" data-effect="robot">🤖 Robot</button>
+                    <button class="voice-btn" data-effect="deep">🎭 Deep</button>
+                    <button class="voice-btn" data-effect="high">🐭 High Pitch</button>
+                    <button class="voice-btn" data-effect="echo">🔊 Echo</button>
+                </div>
+
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+
+                <button class="upload-btn" id="uploadBtn" disabled>
+                    🚀 Process & Share
+                </button>
+            </div>
+
+            <div class="chat-section">
+                <h2 class="section-title">💬 Anonymous Chat</h2>
+                <div class="chat-container">
+                    <div class="messages" id="messages"></div>
+                    <div class="chat-input-container">
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Type your anonymous message...">
+                        <button class="send-btn" id="sendBtn">📤</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="shared-files">
+            <h2 class="section-title">📋 Shared Files</h2>
+            <div class="file-grid" id="fileGrid">
+                <!-- Files will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AnonShare {
+            constructor() {
+                this.selectedFiles = [];
+                this.currentVoiceEffect = 'none';
+                this.sharedFiles = JSON.parse(localStorage.getItem('anonSharedFiles') || '[]');
+                this.chatMessages = JSON.parse(localStorage.getItem('anonChatMessages') || '[]');
+                this.audioContext = null;
+                this.anonymousNames = [
+                    'Anonymous Owl', 'Mysterious Fox', 'Secret Panda', 'Hidden Dragon',
+                    'Phantom Cat', 'Shadow Wolf', 'Enigma Bear', 'Cipher Rabbit',
+                    'Masked Tiger', 'Veiled Eagle', 'Silent Lion', 'Ghost Deer'
+                ];
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.displaySharedFiles();
+                this.displayChatMessages();
+                this.initAudioContext();
+            }
+
+            initAudioContext() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.warn('Web Audio API not supported');
+                }
+            }
+
+            setupEventListeners() {
+                const uploadArea = document.getElementById('uploadArea');
+                const fileInput = document.getElementById('fileInput');
+                const uploadBtn = document.getElementById('uploadBtn');
+                const chatInput = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('sendBtn');
+
+                // Upload area events
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+                uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+                uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+
+                // File input change
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Upload button
+                uploadBtn.addEventListener('click', this.processAndUpload.bind(this));
+
+                // Voice effect buttons
+                document.querySelectorAll('.voice-btn').forEach(btn => {
+                    btn.addEventListener('click', this.selectVoiceEffect.bind(this));
+                });
+
+                // Chat events
+                chatInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+                sendBtn.addEventListener('click', this.sendMessage.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.currentTarget.classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('dragover');
+                const files = Array.from(e.dataTransfer.files);
+                this.processFiles(files);
+            }
+
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                this.processFiles(files);
+            }
+
+            processFiles(files) {
+                this.selectedFiles = files.filter(file => 
+                    file.type.startsWith('image/') || 
+                    file.type.startsWith('video/') || 
+                    file.type.startsWith('audio/')
+                );
+
+                if (this.selectedFiles.length > 0) {
+                    document.getElementById('uploadBtn').disabled = false;
+                    this.showStatus(`${this.selectedFiles.length} file(s) selected`, 'success');
+                    this.updateUploadAreaText();
+                } else {
+                    this.showStatus('No valid media files selected', 'error');
+                }
+            }
+
+            updateUploadAreaText() {
+                const uploadArea = document.getElementById('uploadArea');
+                const icon = uploadArea.querySelector('.upload-icon');
+                const text = uploadArea.querySelector('.upload-text');
+                
+                icon.textContent = '✅';
+                text.textContent = `${this.selectedFiles.length} file(s) ready to process`;
+            }
+
+            selectVoiceEffect(e) {
+                document.querySelectorAll('.voice-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentVoiceEffect = e.target.dataset.effect;
+            }
+
+            async processAndUpload() {
+                if (this.selectedFiles.length === 0) return;
+
+                const uploadBtn = document.getElementById('uploadBtn');
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = '⚙️ Processing...';
+
+                this.showProgress(0);
+
+                try {
+                    for (let i = 0; i < this.selectedFiles.length; i++) {
+                        const file = this.selectedFiles[i];
+                        const processedFile = await this.processFile(file);
+                        
+                        const fileData = {
+                            id: Date.now() + i,
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            processedData: processedFile,
+                            voiceEffect: this.currentVoiceEffect,
+                            uploadTime: new Date().toISOString(),
+                            anonymousName: this.getRandomAnonymousName()
+                        };
+
+                        this.sharedFiles.unshift(fileData);
+                        this.updateProgress((i + 1) / this.selectedFiles.length * 100);
+                    }
+
+                    localStorage.setItem('anonSharedFiles', JSON.stringify(this.sharedFiles));
+                    this.displaySharedFiles();
+                    this.showStatus('Files processed and shared successfully!', 'success');
+                    this.resetUploadArea();
+
+                } catch (error) {
+                    this.showStatus('Error processing files: ' + error.message, 'error');
+                } finally {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = '🚀 Process & Share';
+                    this.hideProgress();
+                }
+            }
+
+            async processFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            let processedData = e.target.result;
+                            
+                            if (file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+                                processedData = await this.applyVoiceEffect(processedData, file.type);
+                            }
+                            
+                            resolve(processedData);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            async applyVoiceEffect(dataUrl, fileType) {
+                // Note: This is a simplified version. In a real implementation,
+                // you would use Web Audio API to actually modify the audio
+                if (this.currentVoiceEffect === 'none') {
+                    return dataUrl;
+                }
+
+                // For demo purposes, we'll just add a marker to indicate processing
+                // In a real app, you'd process the audio using Web Audio API
+                return dataUrl + '#processed-' + this.currentVoiceEffect;
+            }
+
+            showProgress(percentage) {
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                progressBar.style.display = 'block';
+                progressFill.style.width = percentage + '%';
+            }
+
+            updateProgress(percentage) {
+                const progressFill = document.getElementById('progressFill');
+                progressFill.style.width = percentage + '%';
+            }
+
+            hideProgress() {
+                setTimeout(() => {
+                    document.getElementById('progressBar').style.display = 'none';
+                }, 1000);
+            }
+
+            showStatus(message, type) {
+                const statusEl = document.getElementById('statusMessage');
+                statusEl.textContent = message;
+                statusEl.className = `status-message status-${type}`;
+                statusEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 3000);
+            }
+
+            resetUploadArea() {
+                const uploadArea = document.getElementById('uploadArea');
+                const icon = uploadArea.querySelector('.upload-icon');
+                const text = uploadArea.querySelector('.upload-text');
+                
+                icon.textContent = '📁';
+                text.textContent = 'Drop files here or click to browse';
+                
+                this.selectedFiles = [];
+                document.getElementById('fileInput').value = '';
+                document.getElementById('uploadBtn').disabled = true;
+            }
+
+            displaySharedFiles() {
+                const fileGrid = document.getElementById('fileGrid');
+                fileGrid.innerHTML = '';
+
+                if (this.sharedFiles.length === 0) {
+                    fileGrid.innerHTML = '<p style="text-align: center; color: #718096; grid-column: 1/-1;">No files shared yet. Upload some files to get started!</p>';
+                    return;
+                }
+
+                this.sharedFiles.forEach(file => {
+                    const fileElement = this.createFileElement(file);
+                    fileGrid.appendChild(fileElement);
+                });
+            }
+
+            createFileElement(file) {
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.onclick = () => this.previewFile(file);
+
+                const icon = this.getFileIcon(file.type);
+                const time = new Date(file.uploadTime).toLocaleString();
+                
+                div.innerHTML = `
+                    <div class="file-icon">${icon}</div>
+                    <h4>${file.name}</h4>
+                    <p style="font-size: 0.8em; color: #718096;">${this.formatFileSize(file.size)}</p>
+                    <p style="font-size: 0.8em; color: #667eea;">by ${file.anonymousName}</p>
+                    <p style="font-size: 0.7em; color: #a0aec0;">${time}</p>
+                    ${file.voiceEffect !== 'none' ? `<p style="font-size: 0.7em; color: #48bb78;">Voice: ${file.voiceEffect}</p>` : ''}
+                `;
+
+                return div;
+            }
+
+            getFileIcon(type) {
+                if (type.startsWith('image/')) return '🖼️';
+                if (type.startsWith('video/')) return '🎥';
+                if (type.startsWith('audio/')) return '🎵';
+                return '📄';
+            }
+
+            formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
+            previewFile(file) {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                    justify-content: center; z-index: 1000; cursor: pointer;
+                `;
+
+                let content = '';
+                if (file.type.startsWith('image/')) {
+                    content = `<img src="${file.processedData}" style="max-width: 90%; max-height: 90%; border-radius: 10px;">`;
+                } else if (file.type.startsWith('video/')) {
+                    content = `<video src="${file.processedData}" controls style="max-width: 90%; max-height: 90%; border-radius: 10px;">`;
+                } else if (file.type.startsWith('audio/')) {
+                    content = `
+                        <div style="background: white; padding: 30px; border-radius: 20px; text-align: center;">
+                            <h3 style="margin-bottom: 20px;">${file.name}</h3>
+                            <audio src="${file.processedData}" controls style="width: 100%;"></audio>
+                            <p style="margin-top: 15px; color: #718096;">Voice Effect: ${file.voiceEffect}</p>
+                        </div>
+                    `;
+                }
+
+                modal.innerHTML = content;
+                modal.onclick = () => document.body.removeChild(modal);
+                document.body.appendChild(modal);
+            }
+
+            sendMessage() {
+                const input = document.getElementById('chatInput');
+                const message = input.value.trim();
+                
+                if (!message) return;
+
+                const messageData = {
+                    id: Date.now(),
+                    text: message,
+                    anonymousName: this.getRandomAnonymousName(),
+                    timestamp: new Date().toISOString()
+                };
+
+                this.chatMessages.push(messageData);
+                localStorage.setItem('anonChatMessages', JSON.stringify(this.chatMessages));
+                
+                input.value = '';
+                this.displayChatMessages();
+                this.scrollToBottom();
+            }
+
+            displayChatMessages() {
+                const messagesContainer = document.getElementById('messages');
+                messagesContainer.innerHTML = '';
+
+                if (this.chatMessages.length === 0) {
+                    messagesContainer.innerHTML = '<p style="text-align: center; color: #718096;">No messages yet. Start the conversation!</p>';
+                    return;
+                }
+
+                this.chatMessages.slice(-50).forEach(message => {
+                    const messageEl = this.createMessageElement(message);
+                    messagesContainer.appendChild(messageEl);
+                });
+            }
+
+            createMessageElement(message) {
+                const div = document.createElement('div');
+                div.className = 'message';
+                
+                const time = new Date(message.timestamp).toLocaleString();
+                
+                div.innerHTML = `
+                    <div class="message-header">
+                        <span class="anonymous-name">${message.anonymousName}</span>
+                        <span>${time}</span>
+                    </div>
+                    <div class="message-content">${this.escapeHtml(message.text)}</div>
+                `;
+
+                return div;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            scrollToBottom() {
+                const messages = document.getElementById('messages');
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            getRandomAnonymousName() {
+                return this.anonymousNames[Math.floor(Math.random() * this.anonymousNames.length)];
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new AnonShare();
+        });
+    </script>
+</body>
+</html>
