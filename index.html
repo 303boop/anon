@@ -1,114 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>P2P Chat (No Server)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Messenger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .room-setup {
+            padding: 30px;
+            text-align: center;
+        }
+
+        .room-code-input, .message-input {
+            width: 100%;
+            max-width: 400px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            margin: 10px 0;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .room-code-input:focus, .message-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .chat-area {
+            display: none;
+            padding: 20px;
+        }
+
+        .messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.own {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.other {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .message-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            margin: 0;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-btn {
+            background: #28a745;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 50px;
+        }
+
+        .room-info {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            display: none;
+            z-index: 1000;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h2>2-Person P2P Chat (No Server)</h2>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Anonymous Messenger</h1>
+            <p>Send messages and images anonymously</p>
+        </div>
 
-  <textarea id="signal" placeholder="Copy/paste offer/answer here" style="width:100%;height:100px;"></textarea>
-  <br>
-  <button id="createOffer">Create Offer</button>
-  <button id="createAnswer">Create Answer</button>
-  <button id="setAnswer">Set Remote Answer</button>
+        <div class="room-setup" id="roomSetup">
+            <h2>Enter Room Code</h2>
+            <p>Share this code with the person you want to chat with</p>
+            <br>
+            <input type="text" class="room-code-input" id="roomCode" placeholder="Enter or create a room code">
+            <br>
+            <button class="btn" onclick="joinRoom()">Join Room</button>
+            <button class="btn" onclick="generateRoomCode()">Generate New Code</button>
+        </div>
 
-  <div id="chat" style="display:none; border:1px solid #ccc; padding:10px; width:300px; height:300px; overflow:auto;"></div>
-  <div id="controls" style="display:none; margin-top:10px;">
-    <input id="msg" placeholder="Type a message" />
-    <button id="send">Send</button>
-    <input type="file" id="file" />
-  </div>
+        <div class="chat-area" id="chatArea">
+            <div class="room-info">
+                <strong>Room: <span id="currentRoom"></span></strong>
+                <p>Share this code with your contact to start chatting anonymously</p>
+                <button class="btn" onclick="copyRoomCode()" style="font-size: 14px; padding: 8px 16px;">Copy Code</button>
+                <button class="btn" onclick="leaveRoom()" style="font-size: 14px; padding: 8px 16px; background: #dc3545;">Leave Room</button>
+            </div>
 
-  <script>
-    let pc, dataChannel;
+            <div class="messages" id="messages"></div>
 
-    function log(msg) {
-      const chat = document.getElementById('chat');
-      const div = document.createElement('div');
-      div.textContent = msg;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-    }
+            <div class="message-form">
+                <input type="file" class="file-input" id="fileInput" accept="image/*,*">
+                <button class="file-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+                <input type="text" class="message-input" id="messageInput" placeholder="Type your anonymous message...">
+                <button class="btn" onclick="sendMessage()" style="border-radius: 25px;">Send</button>
+            </div>
+        </div>
+    </div>
 
-    function setupConnection() {
-      document.getElementById('chat').style.display = 'block';
-      document.getElementById('controls').style.display = 'block';
+    <div class="notification" id="notification"></div>
 
-      dataChannel.onmessage = e => {
-        try {
-          let data = JSON.parse(e.data);
-          if (data.type === 'text') log("Them: " + data.text);
-          if (data.type === 'image') {
-            let img = document.createElement('img');
-            img.src = data.url;
-            img.style.maxWidth = '100%';
-            chat.appendChild(img);
-          }
-        } catch {
-          log("Them: " + e.data);
+    <script>
+        let currentRoom = '';
+        let messageHistory = [];
+        let userId = 'anon_' + Math.random().toString(36).substr(2, 9);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load existing room if available
+            const savedRoom = localStorage.getItem('currentRoom');
+            if (savedRoom) {
+                document.getElementById('roomCode').value = savedRoom;
+            }
+
+            // Enter key support
+            document.getElementById('roomCode').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') joinRoom();
+            });
+
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') sendMessage();
+            });
+
+            // File input handler
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+            // Auto-refresh messages
+            setInterval(loadMessages, 2000);
+        });
+
+        function generateRoomCode() {
+            const code = 'room_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            document.getElementById('roomCode').value = code;
+            showNotification('Room code generated!');
         }
-      };
 
-      document.getElementById('send').onclick = () => {
-        const text = document.getElementById('msg').value;
-        if (text) {
-          dataChannel.send(JSON.stringify({ type:'text', text }));
-          log("Me: " + text);
-          document.getElementById('msg').value = '';
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCode').value.trim();
+            if (!roomCode) {
+                showNotification('Please enter a room code', 'error');
+                return;
+            }
+
+            currentRoom = roomCode;
+            localStorage.setItem('currentRoom', currentRoom);
+            document.getElementById('currentRoom').textContent = currentRoom;
+
+            document.getElementById('roomSetup').style.display = 'none';
+            document.getElementById('chatArea').style.display = 'block';
+
+            loadMessages();
+            showNotification('Joined room: ' + roomCode);
         }
-      };
 
-      document.getElementById('file').onchange = e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          dataChannel.send(JSON.stringify({ type:'image', url: reader.result }));
-          let img = document.createElement('img');
-          img.src = reader.result;
-          img.style.maxWidth = '100%';
-          document.getElementById('chat').appendChild(img);
-        };
-        reader.readAsDataURL(file);
-      };
-    }
-
-    document.getElementById('createOffer').onclick = async () => {
-      pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-      dataChannel = pc.createDataChannel("chat");
-      dataChannel.onopen = setupConnection;
-      pc.onicecandidate = e => {
-        if (!e.candidate) {
-          document.getElementById('signal').value = JSON.stringify(pc.localDescription);
+        function leaveRoom() {
+            localStorage.removeItem('currentRoom');
+            localStorage.removeItem('messages_' + currentRoom);
+            currentRoom = '';
+            document.getElementById('roomSetup').style.display = 'block';
+            document.getElementById('chatArea').style.display = 'none';
+            document.getElementById('roomCode').value = '';
+            document.getElementById('messages').innerHTML = '';
         }
-      };
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-    };
 
-    document.getElementById('createAnswer').onclick = async () => {
-      pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-      pc.ondatachannel = e => {
-        dataChannel = e.channel;
-        dataChannel.onopen = setupConnection;
-      };
-      pc.onicecandidate = e => {
-        if (!e.candidate) {
-          document.getElementById('signal').value = JSON.stringify(pc.localDescription);
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+
+            if (!message) return;
+
+            const messageData = {
+                id: Date.now(),
+                text: message,
+                sender: userId,
+                timestamp: new Date().toLocaleTimeString(),
+                type: 'text'
+            };
+
+            saveMessage(messageData);
+            messageInput.value = '';
+            displayMessage(messageData, true);
         }
-      };
-      const offer = JSON.parse(document.getElementById('signal').value);
-      await pc.setRemoteDescription(offer);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-    };
 
-    document.getElementById('setAnswer').onclick = async () => {
-      const answer = JSON.parse(document.getElementById('signal').value);
-      await pc.setRemoteDescription(answer);
-    };
-  </script>
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const messageData = {
+                    id: Date.now(),
+                    text: file.name,
+                    fileData: e.target.result,
+                    fileType: file.type,
+                    sender: userId,
+                    timestamp: new Date().toLocaleTimeString(),
+                    type: 'file'
+                };
+
+                saveMessage(messageData);
+                displayMessage(messageData, true);
+                showNotification('File sent!');
+            };
+
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function saveMessage(messageData) {
+            let messages = JSON.parse(localStorage.getItem('messages_' + currentRoom) || '[]');
+            messages.push(messageData);
+
+            // Keep only last 100 messages to avoid storage issues
+            if (messages.length > 100) {
+                messages = messages.slice(-100);
+            }
+
+            localStorage.setItem('messages_' + currentRoom, JSON.stringify(messages));
+        }
+
+        function loadMessages() {
+            if (!currentRoom) return;
+
+            const messages = JSON.parse(localStorage.getItem('messages_' + currentRoom) || '[]');
+            const messagesContainer = document.getElementById('messages');
+
+            // Only update if there are new messages
+            if (messages.length !== messageHistory.length) {
+                messagesContainer.innerHTML = '';
+                messageHistory = messages;
+
+                messages.forEach(msg => {
+                    displayMessage(msg, msg.sender === userId);
+                });
+
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        function displayMessage(messageData, isOwn) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+
+            let content = '';
+
+            if (messageData.type === 'file') {
+                if (messageData.fileType.startsWith('image/')) {
+                    content = `
+                        <div>📷 Image: ${messageData.text}</div>
+                        <img src="${messageData.fileData}" alt="${messageData.text}" class="image-preview">
+                    `;
+                } else {
+                    content = `
+                        <div>📎 File: ${messageData.text}</div>
+                        <a href="${messageData.fileData}" download="${messageData.text}">Download File</a>
+                    `;
+                }
+            } else {
+                content = messageData.text;
+            }
+
+            messageDiv.innerHTML = `
+                ${content}
+                <div class="timestamp">${messageData.timestamp}</div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        function copyRoomCode() {
+            navigator.clipboard.writeText(currentRoom).then(function() {
+                showNotification('Room code copied to clipboard!');
+            });
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            notification.style.display = 'block';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Clear old data periodically
+        setInterval(() => {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => {
+                if (key.startsWith('messages_') && key !== 'messages_' + currentRoom) {
+                    localStorage.removeItem(key);
+                }
+            });
+        }, 300000); // Clear every 5 minutes
+    </script>
 </body>
 </html>
