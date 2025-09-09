@@ -1,92 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>2-Person P2P Chat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>P2P Chat (No Server)</title>
 </head>
 <body>
-  <h2>2-Person Temporary Chat (WebRTC P2P)</h2>
+  <h2>2-Person P2P Chat (No Server)</h2>
 
-  <div>
-    <input id="room" placeholder="Room ID" />
-    <button id="create">Create Room</button>
-    <button id="join">Join Room</button>
-  </div>
+  <textarea id="signal" placeholder="Copy/paste offer/answer here" style="width:100%;height:100px;"></textarea>
+  <br>
+  <button id="createOffer">Create Offer</button>
+  <button id="createAnswer">Create Answer</button>
+  <button id="setAnswer">Set Remote Answer</button>
 
   <div id="chat" style="display:none; border:1px solid #ccc; padding:10px; width:300px; height:300px; overflow:auto;"></div>
-
   <div id="controls" style="display:none; margin-top:10px;">
     <input id="msg" placeholder="Type a message" />
     <button id="send">Send</button>
     <input type="file" id="file" />
   </div>
 
-  <!-- PeerJS -->
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
-    let peer, conn;
+    let pc, dataChannel;
 
-    const chatBox = document.getElementById('chat');
-    const msgInput = document.getElementById('msg');
-
-    function addMsg(text, from) {
+    function log(msg) {
+      const chat = document.getElementById('chat');
       const div = document.createElement('div');
-      div.textContent = (from ? from+": ":"") + text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      div.textContent = msg;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    function addImage(url, from) {
-      const div = document.createElement('div');
-      div.textContent = from ? from+": " : "";
-      const img = document.createElement('img');
-      img.src = url;
-      img.style.maxWidth = '100%';
-      div.appendChild(img);
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    document.getElementById('create').onclick = () => {
-      const roomId = document.getElementById('room').value.trim();
-      if (!roomId) return alert('Enter a Room ID');
-      peer = new Peer(roomId, { host: 'peerjs.com', port: 443, secure: true });
-      peer.on('open', id => {
-        addMsg('Room created. Share ID: ' + id);
-      });
-      peer.on('connection', c => {
-        conn = c;
-        setupConn();
-      });
-    };
-
-    document.getElementById('join').onclick = () => {
-      const roomId = document.getElementById('room').value.trim();
-      if (!roomId) return alert('Enter a Room ID');
-      peer = new Peer(null, { host: 'peerjs.com', port: 443, secure: true });
-      peer.on('open', id => {
-        conn = peer.connect(roomId);
-        conn.on('open', setupConn);
-      });
-    };
-
-    function setupConn() {
+    function setupConnection() {
       document.getElementById('chat').style.display = 'block';
       document.getElementById('controls').style.display = 'block';
-      addMsg('Connected!');
 
-      conn.on('data', data => {
-        if (data.type === 'text') addMsg(data.text, 'Them');
-        if (data.type === 'image') addImage(data.url, 'Them');
-      });
+      dataChannel.onmessage = e => {
+        try {
+          let data = JSON.parse(e.data);
+          if (data.type === 'text') log("Them: " + data.text);
+          if (data.type === 'image') {
+            let img = document.createElement('img');
+            img.src = data.url;
+            img.style.maxWidth = '100%';
+            chat.appendChild(img);
+          }
+        } catch {
+          log("Them: " + e.data);
+        }
+      };
 
       document.getElementById('send').onclick = () => {
-        const text = msgInput.value;
-        if (text && conn.open) {
-          conn.send({ type:'text', text });
-          addMsg(text, 'Me');
-          msgInput.value = '';
+        const text = document.getElementById('msg').value;
+        if (text) {
+          dataChannel.send(JSON.stringify({ type:'text', text }));
+          log("Me: " + text);
+          document.getElementById('msg').value = '';
         }
       };
 
@@ -95,12 +65,50 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {
-          conn.send({ type:'image', url: reader.result });
-          addImage(reader.result, 'Me');
+          dataChannel.send(JSON.stringify({ type:'image', url: reader.result }));
+          let img = document.createElement('img');
+          img.src = reader.result;
+          img.style.maxWidth = '100%';
+          document.getElementById('chat').appendChild(img);
         };
         reader.readAsDataURL(file);
       };
     }
+
+    document.getElementById('createOffer').onclick = async () => {
+      pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+      dataChannel = pc.createDataChannel("chat");
+      dataChannel.onopen = setupConnection;
+      pc.onicecandidate = e => {
+        if (!e.candidate) {
+          document.getElementById('signal').value = JSON.stringify(pc.localDescription);
+        }
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+    };
+
+    document.getElementById('createAnswer').onclick = async () => {
+      pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+      pc.ondatachannel = e => {
+        dataChannel = e.channel;
+        dataChannel.onopen = setupConnection;
+      };
+      pc.onicecandidate = e => {
+        if (!e.candidate) {
+          document.getElementById('signal').value = JSON.stringify(pc.localDescription);
+        }
+      };
+      const offer = JSON.parse(document.getElementById('signal').value);
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+    };
+
+    document.getElementById('setAnswer').onclick = async () => {
+      const answer = JSON.parse(document.getElementById('signal').value);
+      await pc.setRemoteDescription(answer);
+    };
   </script>
 </body>
 </html>
