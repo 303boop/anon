@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-  <title>Anonymous Chat with Voice & Presence</title>
+  <title>Anonymous Chat</title>
   <style>
-    /* Reset and base styles */
     * { 
       margin: 0; 
       padding: 0; 
@@ -380,39 +379,75 @@
   <div class="app-container">
     <!-- Header -->
     <div class="header">
-      <h1>💬 Anonymous Chat</h1>
-      <p>With voice, presence & typing indicator</p>
+      <h1>💬 Anonymous</h1>
+      <p>Private chat rooms</p>
     </div>
 
     <!-- Setup Section -->
     <div class="setup-section" id="setupSection">
-      <input type="text" id="roomCodeInput" placeholder="Enter or create room code" autocomplete="off" autocapitalize="characters" />
-      <button onclick="joinRoom()">Join Room</button>
-      <button onclick="generateRoom()">Generate Room</button>
+      <div class="setup-icon">🚪</div>
+      <div class="setup-title">Join a Room</div>
+      <div class="setup-subtitle">Enter a room code or create a new one to start chatting anonymously</div>
+      
+      <div class="input-wrapper">
+        <input 
+          type="text" 
+          class="room-input" 
+          id="roomCodeInput" 
+          placeholder="Enter room code..."
+          autocomplete="off"
+          autocapitalize="characters"
+        >
+      </div>
+      
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="joinRoom()">
+          <span>🚪</span> Join Room
+        </button>
+        <button class="btn btn-secondary" onclick="generateRoom()">
+          <span>✨</span> Create New Room
+        </button>
+      </div>
     </div>
 
     <!-- Chat Area -->
-    <div class="chat-area hidden" id="chatArea">
+    <div class="chat-area" id="chatArea">
+      <!-- Room Info -->
       <div class="room-info">
-        Room: <span id="currentRoomCode"></span>
-        <span id="presenceCount">(0 online)</span>
-        <span id="typingIndicator"></span>
-        <button onclick="leaveRoom()">Leave Room</button>
+        <div>Room: <span class="room-code" id="currentRoomCode"></span></div>
+        <div class="room-actions">
+          <button class="btn-small btn-copy" onclick="copyRoomCode()">📋 Copy</button>
+          <button class="btn-small btn-leave" onclick="leaveRoom()">🚪 Leave</button>
+        </div>
       </div>
-
-      <div id="messagesContainer" class="messages-container"></div>
-
+      
+      <!-- Messages -->
+      <div class="messages-container" id="messagesContainer">
+        <div class="loading">🔄 Loading messages...</div>
+      </div>
+      
+      <!-- Input Area -->
       <div class="input-area">
-        <input type="file" id="fileInput" accept="image/*" style="display:none;" />
-        <button onclick="document.getElementById('fileInput').click()">📷</button>
-        <textarea id="messageInput" placeholder="Type message or use mic 🎤" rows="1" maxlength="500"></textarea>
-        <button id="sendBtn" disabled onclick="sendMessage()">Send</button>
-        <button id="recordBtn" onclick="toggleRecording()">🎙️</button>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        <button class="btn-round btn-file" onclick="document.getElementById('fileInput').click()">
+          📷
+        </button>
+        <textarea 
+          class="message-input" 
+          id="messageInput" 
+          placeholder="Type a message..."
+          rows="1"
+          maxlength="500"
+        ></textarea>
+        <button class="btn-round btn-send" id="sendBtn" onclick="sendMessage()" disabled>
+          ➤
+        </button>
       </div>
     </div>
   </div>
 
-  <div id="notification" class="notification hidden"></div>
+  <!-- Notification -->
+  <div class="notification" id="notification"></div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
@@ -429,11 +464,16 @@
       messagingSenderId: "692292101984",
       appId: "1:692292101984:web:15ad6efcd0bc1411982005"
     };
-
+    
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // UI elements
+    // App state
+    let currentRoom = '';
+    let userId = 'user_' + Math.random().toString(36).substr(2, 8);
+    let messagesRef = null;
+
+    // DOM elements
     const setupSection = document.getElementById('setupSection');
     const chatArea = document.getElementById('chatArea');
     const roomCodeInput = document.getElementById('roomCodeInput');
@@ -443,276 +483,264 @@
     const sendBtn = document.getElementById('sendBtn');
     const fileInput = document.getElementById('fileInput');
     const notification = document.getElementById('notification');
-    const presenceCount = document.getElementById('presenceCount');
-    const typingIndicator = document.getElementById('typingIndicator');
-    const recordBtn = document.getElementById('recordBtn');
 
-    // App state
-    let currentRoom = '';
-    let userId = 'user_' + Math.random().toString(36).substr(2, 8);
-    let messagesRef = null;
-    let presenceRef = null;
-    let typingRef = null;
-    let isTyping = false;
-    let typingTimeout = null;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-
-    // Generate room code
+    // Generate random room code
     function generateRoom() {
       const code = Math.random().toString(36).substr(2, 6).toUpperCase();
       roomCodeInput.value = code;
-      showNotification('Room code generated!');
+      showNotification('✨ Room code generated!');
     }
 
     // Join room
     function joinRoom() {
       const roomCode = roomCodeInput.value.trim().toUpperCase();
       if (!roomCode) {
-        showNotification('Enter a valid room code', 'error');
+        showNotification('Please enter a room code', 'error');
         return;
       }
+
       currentRoom = roomCode;
-      currentRoomCode.textContent = currentRoom;
-
-      messagesRef = database.ref(`rooms/${currentRoom}/messages`);
-      presenceRef = database.ref(`presence/${currentRoom}/${userId}`);
-      typingRef = database.ref(`typing/${currentRoom}/${userId}`);
-
+      currentRoomCode.textContent = roomCode;
+      messagesRef = database.ref('rooms/' + currentRoom + '/messages');
+      
       setupSection.classList.add('hidden');
-      chatArea.classList.remove('hidden');
-
-      listenMessages();
-      setupPresence();
-      setupTyping();
-      sendSystemMessage('Joined the room');
+      chatArea.classList.add('show');
+      
+      listenForMessages();
+      sendSystemMessage('Someone joined');
+      showNotification('🚪 Joined room!');
+      
+      messageInput.focus();
     }
 
     // Leave room
     function leaveRoom() {
-      if (messagesRef) messagesRef.off();
-      if (presenceRef) presenceRef.remove();
-      if (typingRef) typingRef.remove();
-      messagesContainer.innerHTML = '';
-      messageInput.value = '';
-      sendBtn.disabled = true;
-      presenceCount.textContent = '(0 online)';
-      typingIndicator.textContent = '';
-
-      showNotification('Left room');
+      if (messagesRef) {
+        sendSystemMessage('Someone left');
+        messagesRef.off();
+      }
+      
       currentRoom = '';
+      messagesRef = null;
+      
+      chatArea.classList.remove('show');
       setupSection.classList.remove('hidden');
-      chatArea.classList.add('hidden');
+      
+      roomCodeInput.value = '';
+      messagesContainer.innerHTML = '<div class="loading">🔄 Loading messages...</div>';
+      
+      showNotification('👋 Left room');
+    }
+
+    // Copy room code
+    function copyRoomCode() {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(currentRoom).then(() => {
+          showNotification('📋 Code copied!');
+        });
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = currentRoom;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('📋 Code copied!');
+      }
     }
 
     // Listen for messages
-    function listenMessages() {
-      messagesContainer.innerHTML = '';
+    function listenForMessages() {
+      if (!messagesRef) return;
+      
       messagesRef.off();
-      messagesRef.on('child_added', (snap) => {
-        displayMessage(snap.val());
+      messagesContainer.innerHTML = '';
+      
+      messagesRef.on('child_added', (snapshot) => {
+        const messageData = snapshot.val();
+        displayMessage(messageData);
       });
-    }
-
-    // Display message
-    function displayMessage(msg) {
-      if (!msg) return;
-
-      if (msg.type === 'system') {
-        const sys = document.createElement('div');
-        sys.className = 'system-message';
-        sys.textContent = msg.text;
-        messagesContainer.appendChild(sys);
-      } else {
-        const div = document.createElement('div');
-        div.className = (msg.sender === userId) ? 'message own' : 'message other';
-        const time = new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        let content;
-        if (msg.type === 'voice') {
-          content = `<audio controls src="${msg.fileData}"></audio>`;
-        } else if (msg.type === 'file' && msg.fileType?.startsWith('image/')) {
-          content = `<div>${msg.text}</div><img src="${msg.fileData}" alt="${msg.text}" class="image-preview" onclick="window.open(this.src)"/>`;
-        } else {
-          content = `<div>${msg.text}</div>`;
-        }
-
-        div.innerHTML = `
-          <div class="message-bubble">${content}</div>
-          <div class="message-info">${time}</div>
-        `;
-        messagesContainer.appendChild(div);
-      }
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
     // Send message
     function sendMessage() {
       const text = messageInput.value.trim();
       if (!text || !messagesRef) return;
-
-      const msgData = {
+      
+      const messageData = {
         id: Date.now() + '_' + Math.random(),
         text: text,
         sender: userId,
         timestamp: Date.now(),
         type: 'text'
       };
-      messagesRef.push(msgData);
+      
+      messagesRef.push(messageData);
       messageInput.value = '';
-      sendBtn.disabled = true;
-      updateTyping(false);
+      updateSendButton();
     }
 
     // Send system message
     function sendSystemMessage(text) {
       if (!messagesRef) return;
-      messagesRef.push({
-        id: Date.now() + '_sys',
+      
+      const messageData = {
+        id: Date.now() + '_system',
         text: text,
         sender: 'system',
         timestamp: Date.now(),
         type: 'system'
-      });
+      };
+      
+      messagesRef.push(messageData);
     }
 
-    // Presence system
-    function setupPresence() {
-      presenceRef.set(true);
-      presenceRef.onDisconnect().remove();
-
-      const presenceList = database.ref(`presence/${currentRoom}`);
-      presenceList.on('value', snap => {
-        const count = snap.numChildren();
-        presenceCount.textContent = `(${count} online)`;
-      });
-    }
-
-    // Typing system
-    function setupTyping() {
-      messageInput.addEventListener('input', () => {
-        if (!isTyping) {
-          isTyping = true;
-          updateTyping(true);
-        }
-
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => {
-          isTyping = false;
-          updateTyping(false);
-        }, 1500);
-      });
-
-      const typingListRef = database.ref(`typing/${currentRoom}`);
-      typingListRef.on('value', snap => {
-        let othersTyping = false;
-        snap.forEach(child => {
-          if (child.key !== userId && child.val()) othersTyping = true;
-        });
-        typingIndicator.textContent = othersTyping ? 'Someone is typing...' : '';
-      });
-    }
-
-    function updateTyping(state) {
-      if (!typingRef) return;
-      typingRef.set(state);
-      if (state) {
-        typingRef.onDisconnect().set(false);
-      }
-    }
-
-    // Voice recording setup
-    let isRecording = false;
-
-    async function toggleRecording() {
-      if (isRecording) {
-        stopRecording();
+    // Display message
+    function displayMessage(messageData) {
+      if (messageData.type === 'system') {
+        const systemDiv = document.createElement('div');
+        systemDiv.className = 'system-message';
+        systemDiv.textContent = messageData.text;
+        messagesContainer.appendChild(systemDiv);
       } else {
-        startRecording();
+        const isOwn = messageData.sender === userId;
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
+        
+        const time = new Date(messageData.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        let content = `<div class="message-info">${time}</div>`;
+        
+        if (messageData.type === 'file' && messageData.fileType?.startsWith('image/')) {
+          content += `
+            <div class="message-bubble">
+              📷 ${messageData.text}
+              <img src="${messageData.fileData}" alt="${messageData.text}" class="image-preview" onclick="openImage(this.src)">
+            </div>
+          `;
+        } else {
+          content += `<div class="message-bubble">${messageData.text}</div>`;
+        }
+        
+        messageDiv.innerHTML = content;
+        messagesContainer.appendChild(messageDiv);
       }
+      
+      scrollToBottom();
     }
 
-    function startRecording() {
-      if (!navigator.mediaDevices || !window.MediaRecorder) {
-        alert('Audio recording not supported on this browser');
+    // Open image in new window
+    function openImage(src) {
+      window.open(src, '_blank');
+    }
+
+    // Scroll to bottom
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Update send button state
+    function updateSendButton() {
+      const hasText = messageInput.value.trim().length > 0;
+      sendBtn.disabled = !hasText;
+    }
+
+    // Show notification
+    function showNotification(message, type = 'success') {
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
+      notification.style.display = 'block';
+      
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, 3000);
+    }
+
+    // Auto-resize textarea
+    function autoResize() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    // File handling
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification('File too large (max 2MB)', 'error');
         return;
       }
-
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        recordedChunks = [];
-        mediaRecorder.ondataavailable = event => {
-          if (event.data.size > 0) recordedChunks.push(event.data);
-        };
-        mediaRecorder.onstop = sendVoiceMessage;
-
-        mediaRecorder.start();
-        isRecording = true;
-        recordBtn.textContent = '■';
-        showNotification('🎙️ Recording started');
-      }).catch(err => {
-        alert('Could not access microphone: ' + err);
-      });
-    }
-
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        recordBtn.textContent = '🎙️';
-        showNotification('🛑 Recording stopped');
-      }
-    }
-
-    function sendVoiceMessage() {
-      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result;
-
-        if (!messagesRef) return;
-
-        const voiceMsg = {
+      reader.onload = (e) => {
+        const messageData = {
           id: Date.now() + '_' + Math.random(),
-          text: 'Voice message',
-          fileData: base64data,
-          fileType: 'audio/webm',
+          text: file.name,
+          fileData: e.target.result,
+          fileType: file.type,
           sender: userId,
           timestamp: Date.now(),
-          type: 'voice'
+          type: 'file'
         };
-
-        messagesRef.push(voiceMsg);
-        showNotification('🎧 Voice message sent');
+        
+        messagesRef.push(messageData);
+        showNotification('📷 Image sent!');
       };
-      reader.readAsDataURL(blob);
-    }
+      
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    });
 
-    // Enable send button when input not empty
+    // Event listeners
     messageInput.addEventListener('input', () => {
-      sendBtn.disabled = messageInput.value.trim().length === 0;
+      updateSendButton();
+      autoResize();
     });
 
-    // Join room on Enter key in input
-    roomCodeInput.addEventListener('keydown', e => {
-      if(e.key === 'Enter') joinRoom();
-    });
-
-    // Send message on Enter (not shift+Enter)
-    messageInput.addEventListener('keydown', e => {
+    messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if(!sendBtn.disabled) sendMessage();
+        if (!sendBtn.disabled) {
+          sendMessage();
+        }
       }
     });
 
-    // Copy room code helper
-    function showNotification(msg, type = 'success') {
-      notification.textContent = msg;
-      notification.className = 'notification ' + (type === 'error' ? 'error' : '');
-      notification.classList.remove('hidden');
-      setTimeout(() => notification.classList.add('hidden'), 3000);
-    }
+    roomCodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        joinRoom();
+      }
+    });
+
+    // Close modal when clicking outside
+    voiceModal.addEventListener('click', (e) => {
+      if (e.target === voiceModal) {
+        closeVoiceModal();
+      }
+    });
+
+    // Prevent zoom on input focus (iOS)
+    document.addEventListener('touchstart', {}, true);
+
+    // Handle page unload
+    window.addEventListener('beforeunload', () => {
+      if (presenceRef && currentRoom) {
+        // Clean up presence and typing status
+        presenceRef.remove();
+        if (typingRef) {
+          typingRef.remove();
+        }
+        sendSystemMessage(userNickname + ' left the chat');
+      }
+    });
+
+    // Initialize
+    updateSendButton();
   </script>
 </body>
 </html>
