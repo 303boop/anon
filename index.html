@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Anonymous Real-Time Messenger</title>
   <style>
+    /* Styles same as before for layout and appearance */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -179,8 +180,9 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+  
   <script>
-    // Your specific Firebase configuration
+    // Firebase config (your project)
     var firebaseConfig = {
       apiKey: "AIzaSyBhpJ1yAo92xLx6L3GyTVTuZsOXYYDZKWs",
       authDomain: "anon-ac806.firebaseapp.com",
@@ -199,26 +201,33 @@
     let messagesRef = null;
 
     function generateRoomCode() {
-      const code = 'ROOM-' + Math.random().toString(36).substr(2,6).toUpperCase();
+      const code = 'ROOM-' + Math.random().toString(36).substr(2, 6).toUpperCase();
       document.getElementById('roomCode').value = code;
       showNotification('🎲 Room code generated!');
     }
     function joinRoom() {
       const roomCode = document.getElementById('roomCode').value.trim();
-      if(!roomCode) { showNotification('❌ Please enter a room code','error'); return; }
+      if (!roomCode) {
+        showNotification('❌ Please enter a room code', 'error');
+        return;
+      }
       currentRoom = roomCode;
       document.getElementById('currentRoom').textContent = currentRoom;
       messagesRef = database.ref('rooms/' + currentRoom + '/messages');
       document.querySelector('.room-setup').style.display = 'none';
       document.getElementById('chatArea').style.display = 'block';
       listenForMessages();
-      sendSystemMessage(userId.substr(5,4)+' joined the chat');
-      showNotification('🚪 Joined room: '+ roomCode);
+      sendSystemMessage(userId.substr(5, 4) + ' joined the chat');
+      showNotification('🚪 Joined room: ' + roomCode);
     }
     function listenForMessages() {
-      messagesRef.off(); // remove previous listeners if any
+      if (!messagesRef) {
+        console.error('Messages ref not set');
+        return;
+      }
+      messagesRef.off();
       document.getElementById('messages').innerHTML = '';
-      messagesRef.on('child_added', function(snapshot) {
+      messagesRef.on('child_added', function (snapshot) {
         const messageData = snapshot.val();
         displayMessage(messageData, messageData.sender === userId);
       });
@@ -226,50 +235,61 @@
     function sendMessage() {
       const messageInput = document.getElementById('messageInput');
       const message = messageInput.value.trim();
-      if(!message || !messagesRef) return;
+      if (!message || !messagesRef) return;
       const messageData = {
         id: Date.now() + '_' + Math.random(),
         text: message,
         sender: userId,
-        senderName: userId.substr(5,4),
+        senderName: userId.substr(5, 4),
         timestamp: Date.now(),
-        type: 'text'
+        type: 'text',
       };
-      messagesRef.push(messageData);
-      messageInput.value = '';
+      try {
+        messagesRef.push(messageData);
+        messageInput.value = '';
+      } catch (error) {
+        console.error('Error sending message:', error);
+        showNotification('Error sending message', 'error');
+      }
     }
     function sendSystemMessage(text) {
-      if(!messagesRef) return;
+      if (!messagesRef) return;
       const messageData = {
-        id: Date.now()+'_system',
+        id: Date.now() + '_system',
         text: text,
         sender: 'system',
         senderName: 'System',
         timestamp: Date.now(),
-        type: 'system'
+        type: 'system',
       };
       messagesRef.push(messageData);
     }
-    document.getElementById('fileInput').addEventListener('change', function(event){
+    document.getElementById('fileInput').addEventListener('change', function (event) {
       const file = event.target.files[0];
-      if(!file) return;
-      if(file.size > 1024*1024) { // 1MB limit
-        showNotification('❌ File too large (max 1MB)','error'); return;
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        showNotification('❌ File too large (max 5MB)', 'error');
+        return;
       }
       const reader = new FileReader();
-      reader.onload = function(e){
+      reader.onload = function (e) {
         const messageData = {
           id: Date.now() + '_' + Math.random(),
           text: file.name,
           fileData: e.target.result,
           fileType: file.type,
           sender: userId,
-          senderName: userId.substr(5,4),
+          senderName: userId.substr(5, 4),
           timestamp: Date.now(),
-          type: 'file'
+          type: 'file',
         };
-        messagesRef.push(messageData);
-        showNotification('📁 File sent!');
+        try {
+          messagesRef.push(messageData);
+          showNotification('📁 File sent!');
+        } catch (error) {
+          console.error('Error sending file:', error);
+          showNotification('Error sending file', 'error');
+        }
       };
       reader.readAsDataURL(file);
       event.target.value = '';
@@ -277,7 +297,7 @@
     function displayMessage(messageData, isOwn) {
       const messagesContainer = document.getElementById('messages');
       const messageDiv = document.createElement('div');
-      if(messageData.type === 'system') {
+      if (messageData.type === 'system') {
         messageDiv.className = 'status';
         messageDiv.textContent = messageData.text;
         messagesContainer.appendChild(messageDiv);
@@ -287,8 +307,8 @@
       messageDiv.className = `message ${isOwn ? 'own' : 'other'}`;
       let content = '';
       const time = new Date(messageData.timestamp).toLocaleTimeString();
-      const senderLabel = isOwn ? 'You' : ('Anonymous ' + messageData.senderName);
-      if(messageData.type === 'file' && messageData.fileType && messageData.fileType.startsWith('image/')) {
+      const senderLabel = isOwn ? 'You' : 'Anonymous ' + messageData.senderName;
+      if (messageData.type === 'file' && messageData.fileType && messageData.fileType.startsWith('image/')) {
         content = `
           <div><strong>${senderLabel}:</strong></div>
           <div>📷 ${messageData.text}</div>
@@ -318,13 +338,13 @@
       messages.scrollTop = messages.scrollHeight;
     }
     function copyRoomCode() {
-      navigator.clipboard.writeText(currentRoom).then(function() {
+      navigator.clipboard.writeText(currentRoom).then(function () {
         showNotification('📋 Room code copied!');
       });
     }
     function leaveRoom() {
-      if(messagesRef) {
-        sendSystemMessage(userId.substr(5,4)+' left the chat');
+      if (messagesRef) {
+        sendSystemMessage(userId.substr(5, 4) + ' left the chat');
         messagesRef.off();
       }
       currentRoom = '';
@@ -340,19 +360,21 @@
       notification.textContent = message;
       notification.className = `notification ${type === 'error' ? 'error' : ''}`;
       notification.style.display = 'block';
-      setTimeout(() => { notification.style.display = 'none'; }, 4000);
+      setTimeout(() => {
+        notification.style.display = 'none';
+      }, 4000);
     }
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('roomCode').addEventListener('keypress', function(e){
-        if(e.key==='Enter') joinRoom();
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('roomCode').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') joinRoom();
       });
-      document.getElementById('messageInput').addEventListener('keypress', function(e){
-        if(e.key==='Enter') sendMessage();
+      document.getElementById('messageInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') sendMessage();
       });
     });
-    window.addEventListener('beforeunload', function() {
-      if(messagesRef && currentRoom) {
-        sendSystemMessage(userId.substr(5,4)+' left the chat');
+    window.addEventListener('beforeunload', function () {
+      if (messagesRef && currentRoom) {
+        sendSystemMessage(userId.substr(5, 4) + ' left the chat');
       }
     });
   </script>
